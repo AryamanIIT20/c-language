@@ -1,0 +1,28 @@
+foo: c-asm.c m.s
+	riscv64-unknown-elf-gcc -O0 -nostdlib -ggdb -march=rv32i -mabi=ilp32 -Wl,-Tm.ld m.s c-asm.c -o main.elf
+	riscv64-unknown-elf-objcopy -O binary main.elf main.bin
+
+assembly: c-asm.c
+	riscv64-unknown-elf-gcc -O0 -nostdlib -march=rv32i -mabi=ilp32 -Wl,-Tm.ld c-asm.c -S
+	# riscv64-unknown-elf-gcc -O0 -nostdlib -ggdb -march=rv32i -mabi=ilp32 -Wl,-Tm.ld c-asm.c -S
+
+compile: m.s m.ld
+	riscv64-unknown-elf-gcc -O0 -ggdb -nostdlib -march=rv32i -mabi=ilp32 -Wl,-Tm.ld m.s -o main.elf
+	riscv64-unknown-elf-objcopy -O binary main.elf main.bin
+
+print_binary: main.bin
+	xxd -e -c 4 -g 4 main.bin
+
+start_qemu: main.elf
+	qemu-system-riscv32 -S -M virt -nographic -bios none -kernel main.elf -gdb tcp::1234
+
+connect_gdb: main.elf
+	gdb-multiarch main.elf -ex "target remote localhost:1234" -ex "break _start" -ex "continue" -q
+
+clean:
+	rm -rf *.out *.bin *.elf c-asm.s
+
+run: main.c
+	gcc main.c -o main.out
+	./main.out
+
